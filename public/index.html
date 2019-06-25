@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Login Form</title>
+  </head>
+  <body>
+    <div id="loginform">
+      <p v-if="failSignin">fail to sign in</p>
+      <div v-if="loggedInUser">
+        <p>hello {{ loggedInUser }}</p>
+      </div>
+      <div v-else>
+        <p>please sign in</p>
+      </div>
+
+      <div v-if="loggedInUser">
+        <button v-on:click="logout">Logout</button>
+      </div>
+      <div v-else>
+        <input v-model="username" placeholder="username" />
+        <input type="password" v-model="password" placeholder="password" />
+        <button v-on:click="login">Login</button>
+      </div>
+    </div>
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+      const host = 'http://localhost:3000';
+
+      new Vue({
+        el: '#loginform',
+        data: {
+          username: '',
+          password: '',
+          loggedInUser: '',
+          failSignin: false,
+        },
+        methods: {
+          login: function() {
+            axios
+              .post(`${host}/login`, {
+                username: this.username,
+                password: this.password,
+              })
+              .then(
+                (res => {
+                  this.loggedInUser = res.data.username;
+                  this.failSignin = false;
+
+                  if (res.data.jwt) {
+                    sessionStorage.setItem('jwt', res.data.jwt);
+                  }
+                }).bind(this),
+                (res => {
+                  this.failSignin = true;
+                  this.loggedInUser = '';
+                }).bind(this)
+              );
+          },
+          logout: function() {
+            sessionStorage.removeItem('jwt');
+            axios.post(`${host}/logout`).then(
+              (res => {
+                this.loggedInUser = '';
+                this.failSignin = false;
+              }).bind(this)
+            );
+          },
+        },
+        created: function() {
+          let headers = {};
+          const jwt = sessionStorage.getItem('jwt');
+          if (jwt) {
+            headers.Authorization = 'Bearer ' + jwt;
+          }
+          console.log(jwt);
+          axios({
+            method: 'get',
+            url: `${host}/secure`,
+            headers,
+          }).then(
+            (res => {
+              this.loggedInUser = res.data.username;
+              this.failSignin = false;
+            }).bind(this)
+          );
+        },
+      });
+    </script>
+  </body>
+</html>
